@@ -1,7 +1,9 @@
 #Designed for Julia > 1.5
 using LinearAlgebra, Dates, HDF5, Random, Distributed
+using Suppressor
 include("Metalens OPTIM - SM Functions.jl")
 include("Metalens OPTIM - Core Evaluation.jl")
+const intInf = typemax(Int)
 #
 
 
@@ -33,7 +35,7 @@ length(ARGS)>=1 ? args_checked=ARGS[:] : args_checked=["_vacuum","_mirror"][1:1]
 #
 const w0                =    4.0*lambda0
 const focal_point       =    20*lambda0
-const r_lens            =    6*lambda0
+const r_lens            =    3*lambda0
 const gamma_prime       =    5.75
 const laser_detuning    =    0.0
 const w0_x              =    w0
@@ -55,10 +57,15 @@ println("#"^25)
 ################## OPTIMIZATION ###########################################################################################################
 #
 #Optimization parameters
-thickness_range = (0.1,0.8)
-phase_range = (-3.141592653589793,3.141592653589793)
-buffer_range = (0.,0.5)
-initial_guess = [2.0/3, 1.0775,0.20048828125]#0.2]
+const thickness_range = (0.1,0.8)
+const phase_range = (-3.141592653589793,3.141592653589793)
+const buffer_range = (0.,0.5)
+const initial_guess = [2.0/3, 1.0775,0.20048828125]#0.2]
+const max_steps    = [intInf ; 2][2]
+const max_time_sec = [intInf ; 180][2]
+#
+const lower_range = (x->sort(collect(x))[1]).([thickness_range, phase_range, buffer_range])
+const upper_range = (x->sort(collect(x))[2]).([thickness_range, phase_range, buffer_range])
 #
 #Definition of the solver
 if use_blackboxoptim_option
@@ -80,7 +87,7 @@ if use_blackboxoptim_option
 else
     using Optim
     chosen_solver = (
-        ParticleSwarm(; n_particles = 3),                    #1  Particle Swarm Optimization
+        ParticleSwarm(lower_range, upper_range, 3),          #1  Particle Swarm Optimization
         SimulatedAnnealing(),                                #2  Simulated Annealing
     )[1]
 end
@@ -100,7 +107,7 @@ end
 println("Using the solver: "   , String(Symbol(chosen_solver)))
 println("")
 println("#"^25)
-println("\n\n")
+println("")
 flush(stdout)
 #
 #Objective function
@@ -120,9 +127,10 @@ else
     initial_guess_Optim = rand_range.([thickness_range, phase_range, buffer_range])
 end
 #
-function g_func!(G,x)
-    error("You shouldn't call the gradient function.")
-end
+global_objective_value = 1.0
+global_count_stuck = 0
+time_start_optim = 0.0
+#
 #Optimization core
 if use_blackboxoptim_option
     #
@@ -134,43 +142,75 @@ if use_blackboxoptim_option
         TraceInterval = 1,#1,
         PopulationSize = 50, #default is 50
         CallbackFunction = x -> begin println("Efficiency = $(1-best_fitness(x)), $(best_candidate(x))"); flush(stdout) end,
-        CallbackInterval = 10,#1
-        TargetFitness = 0.0
+        CallbackInterval = 5,#1
+        TargetFitness = 0.0, 
+        MaxFuncEvals = max_steps,
+        MaxTime = max_time_sec
     )
     #
-    x_results = best_candidate(optim_results)
+    obj_result = best_fitness(optim_results)
+    x_results  = best_candidate(optim_results)
     #
 else
     #
-    lower_range = (x->sort(collect(x))[1]).([thickness_range, phase_range, buffer_range])
-    upper_range = (x->sort(collect(x))[2]).([thickness_range, phase_range, buffer_range])
+    global time_start_optim = time()
     #
-    optim_results = Optim.optimize(objective_func, g_func!, 
-        lower_range, 
-        upper_range, 
+    function callback_optim(current_state)
+        println(" * Efficiency = ", 1.0-current_state.value)
+        flush(stdout)
+        if current_state.value==global_objective_value
+            global global_count_stuck+=1
+        else
+            global global_count_stuck=0
+            global global_objective_value = current_state.value
+        end
+        if global_count_stuck>10 || time()-time_start_optim > max_time_sec
+            return true
+        else
+            return false
+        end 
+    end
+    #
+    optim_results = Optim.optimize(objective_func,
+        #lower_range, 
+        #upper_range, 
         initial_guess_Optim,
-        Fminbox(chosen_solver), 
+        #Fminbox(chosen_solver), #This construction is bugged and gives the following error https://github.com/SciML/Optimization.jl/issues/179
+        chosen_solver,
         Optim.Options(
             show_trace = true, 
-            show_every=1, 
-            callback = x -> begin flush(stdout) end,
-            extended_trace=true
-            )
+            show_every = 1, 
+            #If the callback returns true it stops the computation. If it returns false, it continues. 
+            #It must return one of the two
+            callback = callback_optim, 
+            extended_trace = true,
+            outer_iterations = max_steps,
+            iterations = max_steps
+            #,#f_calls_limit = 0
+        )
     )
     #
     x_results = optim_results.minimizer
+    obj_result = optim_results.minimum
     #
 end
 #
 #Printing the final results
+println("")
 println("#"^25)
 println("\n")        
-println("** Optimization result: " , best_fitness(optim_results))
+println("** Optimized efficiency: " , 1.0-obj_result)
 println("** Optimal parameters: ")
 println("   1) disks_thickness     = "        , x_results[1])
 println("   2) phase_shift         = "        , x_results[2])
 println("   3) buffer_smooth       = "        , x_results[3])
 #
+#
+@suppress begin global const r_lens = 6*lambda0 end
+println("r_lens = ", r_lens)
+println("** Optimal settings, but R=6: eta = ", SM_main(x_results[1], x_results[2], x_results[3]))
+flush(stdout)
+
 
 
 ################## FUNCTIONS #############################################################################################################
