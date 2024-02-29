@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "Launching Julia files"
-nameFile="PSO"
+nameFile="OPTIM"
 nCores=16 #32
 nThreads=32
 dateString=$(date +'%d-%m-%Y_%H.%M.%S')

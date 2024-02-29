@@ -17,6 +17,7 @@ end
 #function SM_core_t(E_field_in, w0_in,E_field_f_conj, w0_f, z0_f, state_coeff,atoms_mult) 
 function SM_core_t(w0_in,E_field_f_conj, w0_f, z0_f, state_coeff,atoms_mult)
 	#E_field_in_conj=conj.(E_field_in)
+	lambda0 = 1.0
 	t_alpha_term=(im*(3/(4*pi^2))*((lambda0^2)/(w0_in^2)))
     #t_in    = 1 + (t_alpha_term*sum(E_field_in_conj.*state_coeff.*atoms_mult))
 	#r_in    =     (t_alpha_term*sum(E_field_in.*     state_coeff.*atoms_mult))

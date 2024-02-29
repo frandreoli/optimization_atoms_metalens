@@ -56,21 +56,20 @@ function nearest_choice(array, value)
     findmin(abs.(array.-value))[2]
 end
 #
-function lattice_creation(r_lens, focal_point, disks_thickness, buffer_zone, phase_shift)
+function lattice_creation(r_lens_start, focal_point, disks_thickness, buffer_zone, phase_shift)
     phase_full_data=h5read("Data In/finalDataPhaseNOISE"*".h5", "/PhaseData")
 	phase_full_data[4,:]=shift_phase.(phase_full_data[4,:])
-	#=if phase_ring_integral_option=="NO"
-    	phi_func = (r1,r2) -> mod(k0*(focal_point-sqrt(focal_point^2+((r1+r2)/2)^2))+phase_shift,2*pi)
-	else
-		sqrt_f= (r -> sqrt(focal_point^2+r^2))
-		integral_phi_func = (r1,r2) -> (r2*sqrt_f(r2)-r1*sqrt_f(r1)+(focal_point^2)*log((r2+sqrt_f(r2))/(r1+sqrt_f(r1))) ) / (2*(r2-r1))
-		phi_func = (r1,r2) -> mod(k0*(focal_point-integral_phi_func(r1,r2))+phase_shift,2*pi)
-	end
-	=#
+	#
 	phi_func = (r1,r2) -> mod(k0*(focal_point-sqrt(focal_point^2+((r1+r2)/2)^2))+phase_shift,2*pi)
 	#
+	if fill_until_r_lens_option
+		r_lens = ceil(r_lens_start/disks_thickness)*disks_thickness
+	else
+		r_lens = r_lens_start
+	end
 	#
-	r_range       = collect(0.0:disks_thickness:r_lens)
+	r_range = collect(0.0:disks_thickness:r_lens)
+	#
 	n_phase_disks = length(r_range)-1
 	buffer_range  = vcat(0.0,r_range[2:end-1].+(r_range[2]*buffer_zone))
 	if phase_center_ring_option=="NO"
@@ -150,6 +149,14 @@ function lattice_creation(r_lens, focal_point, disks_thickness, buffer_zone, pha
 			(old_x_max, old_y_max) == (0.0,0.0)
 		end
     end
+	#
+	#
+	if fill_until_r_lens_option
+		selected_atoms = ((xx,yy)->sqrt(xx^2+yy^2)<=r_lens_start).(r_atoms[:,1],r_atoms[:,2])
+		r_atoms = r_atoms[selected_atoms,:]
+	end
+	#
+	#
     return (r_atoms[:,:],length(r_atoms[:,1]))
 end
 #
@@ -171,9 +178,9 @@ function boundaries_choice(nAtoms)
 end
 #
 function lattice_creation_core(r_lens, lattice_constants, r_max,r_min, x_shift, y_shift,focal_point)
-    a_x=lattice_constants[1]*lambda0 #0.15*lambda0
-    a_y=lattice_constants[2]*lambda0 #0.15*lambda0
-    a_z=lattice_constants[3]*lambda0 #0.423496*lambda0
+    a_x=lattice_constants[1] 
+    a_y=lattice_constants[2] 
+    a_z=lattice_constants[3] 
     naX = Int(floor(2*r_lens/a_x))+1
     naY = Int(floor(2*r_lens/a_y))+1
 	naX%2!=0 ? naX+=1 : nothing
@@ -325,4 +332,16 @@ function lattice_creation_buffer_z(r_atoms_buffer_x, r_atoms_buffer_y, a_z_sharp
 		z_func(rr)   = (2*pi-mod(phi_func(rr),pi) )/(6*pi)
 		return hcat(repeat(r_atoms_buffer_x,3),repeat(r_atoms_buffer_y,3),[z*(z_func(sqrt(r_atoms_buffer_x[i]^2+r_atoms_buffer_y[i]^2))) for z in [-1 ; 0 ; 1 ].+0.0 for i in 1:n_points_selected ])
 	end
+end
+
+
+
+function debug_r_atoms(r_lens , focal_point, disks_thickness,buffer_smooth, phase_shift)
+    (r_atoms,n_atoms) = lattice_creation(r_lens , focal_point, disks_thickness,buffer_smooth, phase_shift) 
+    if fill_until_r_lens_option
+        h5write_multiple("r_atoms_YESfill_"*name_add,[("r_atoms", r_atoms)])
+    else
+        h5write_multiple("r_atoms_NOfill_"*name_add,[("r_atoms", r_atoms)])
+    end
+    error("CHECK COMPLETED")
 end

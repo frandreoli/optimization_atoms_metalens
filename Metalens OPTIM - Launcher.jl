@@ -8,11 +8,17 @@ const intInf = typemax(Int)
 
 ################## OPTIONS ####################################################################################################################################
 #
+#System options
 const z_fixed_option               =      ["YES" ; "NO"][1] #must be yes
 const phase_center_ring_option     =      ["YES" ; "NO"][1] #must be yes
+const fill_until_r_lens_option     =      [true ; false][1] #must be true
+#
+#Optimization options
 const initial_guess_option         =      [true ; false][1]
 const use_blackboxoptim_option     =      [true ; false][2]
 #
+#Code options
+const debug_r_atoms_option         =      [true ; false][2]
 
 
 ################## FIXED PARAMETERS ####################################################################################################################################
@@ -21,22 +27,19 @@ Random.seed!()
 if nworkers()==1 addprocs() end
 BLAS.set_num_threads(nworkers())
 const TN = Float32
-const nBulk = 1.0
-const lambda0 = 1.0/nBulk
-const k0 = 2.0*pi/lambda0
+const k0 = 2.0*pi
 const dipoles_polarization = [1.0 ; 0.0 ; 0.0]
 const field_polarization   = [1.0 ; 0.0 ; 0.0]
-length(ARGS)>=1 ? args_checked=ARGS[:] : args_checked=["_vacuum","_mirror"][1:1]
 #
 
 
 ################## GEOMETRICAL PARAMETERS ##############################################################################################################################
 #
-w0                =    4.0*lambda0
-focal_point       =    20*lambda0
-r_lens            =    3*lambda0
-gamma_prime       =    5.75
-laser_detuning    =    0.0
+const w0                =    4.0
+const focal_point       =    20.0
+const r_lens            =    3.0
+const gamma_prime       =    5.75
+const laser_detuning    =    0.0
 #
 println("")
 println("#"^25)
@@ -51,23 +54,36 @@ println("#"^25)
 #
 
 
+################## FUNCTIONS #############################################################################################################
+#
+function rand_range(range)
+    sorted_range = sort(collect(range))
+    (sorted_range[2]-sorted_range[1])*rand()+sorted_range[1]
+end
+
+
 ################## OPTIMIZATION ###########################################################################################################
 #
 #Optimization parameters
 const thickness_range = (0.1,0.8)
 const phase_range = (-3.141592653589793,3.141592653589793)
 const buffer_range = (0.,0.5)
-const initial_guess = [2.0/3, 1.0775,0.20048828125]#0.2]
-const max_steps    = [intInf ; 2][2]
-const max_time_sec = [intInf ; 180][2]
+const initial_guess = [2.0/3, 1.0775,0.20048828125]
+const max_steps    = [intInf ; 2][1]
+const max_time_sec = [intInf ; 180][1]
 #
 const lower_range = (x->sort(collect(x))[1]).([thickness_range, phase_range, buffer_range])
 const upper_range = (x->sort(collect(x))[2]).([thickness_range, phase_range, buffer_range])
+#
+if debug_r_atoms_option
+    debug_r_atoms(r_lens , focal_point, initial_guess[1], 0.8, initial_guess[2])
+end
 #
 #Definition of the solver
 if use_blackboxoptim_option
     #
     using BlackBoxOptim
+    #See the list of solvers at: https://github.com/robertfeldt/BlackBoxOptim.jl
     chosen_solver = (
         :adaptive_de_rand_1_bin,                             #1  Differential Evolution optimizer (metaheuristics)
         :adaptive_de_rand_1_bin_radiuslimited,               #2  Suggested by developers
@@ -83,10 +99,14 @@ if use_blackboxoptim_option
     )[7]
 else
     using Optim
+    #See the list of gradient-free (bounded) solvers at: https://julianlsolvers.github.io/Optim.jl/stable/
     chosen_solver = (
-        ParticleSwarm(lower_range, upper_range, 3),          #1  Particle Swarm Optimization
-        SimulatedAnnealing(),                                #2  Simulated Annealing
-    )[1]
+        ParticleSwarm(lower_range, upper_range, 5),          #1  Particle Swarm Optimization
+        SAMIN(; rt=0.5)                                      #2  Simulated Annealing with intrinsic bounds
+        #
+        #Wrapping into Fminbox results in errors https://github.com/SciML/Optimization.jl/issues/179
+        #,Fminbox(SimulatedAnnealing())                      #3  Simulated Annealing with externally forced bounds
+    )[3]
 end
 #
 #Printing data
@@ -115,11 +135,11 @@ end
 #
 #Initializing the optimization
 if initial_guess_option
-    println("** STARTING the optimization with an initial guess **")
+    println("** STARTING the optimization WITH an initial guess **")
     blackboxoptim_input = (objective_func, initial_guess)
     initial_guess_Optim = initial_guess
 else
-    println("** STARTING the optimization with NO initial guess **")
+    println("** STARTING the optimization WITHOUT an initial guess **")
     blackboxoptim_input = (objective_func)
     initial_guess_Optim = rand_range.([thickness_range, phase_range, buffer_range])
 end
@@ -153,8 +173,11 @@ else
     global time_start_optim = time()
     #
     function callback_optim(current_state)
-        println(" * Efficiency = ", 1.0-current_state.value)
+        println(" * Efficiency = ", 1.0-current_state.value,"\n")
         flush(stdout)
+        if current_state.value<global_objective_value
+            return true
+        end
         if current_state.value==global_objective_value
             global global_count_stuck+=1
         else
@@ -168,23 +191,25 @@ else
         end 
     end
     #
-    optim_results = Optim.optimize(objective_func,
-        #lower_range, 
-        #upper_range, 
+    optim_options = Optim.Options(
+        show_trace = true, 
+        show_every = 1, 
+        #If the callback returns true it stops the computation. If it returns false, it continues. 
+        #It must return one of the two
+        callback = callback_optim, 
+        extended_trace = true,
+        outer_iterations = max_steps,
+        iterations = max_steps
+        #,#f_calls_limit = 0
+    )
+    #
+    optim_results = Optim.optimize(
+        objective_func,
+        lower_range, 
+        upper_range, 
         initial_guess_Optim,
-        #Fminbox(chosen_solver), #This construction is bugged and gives the following error https://github.com/SciML/Optimization.jl/issues/179
         chosen_solver,
-        Optim.Options(
-            show_trace = true, 
-            show_every = 1, 
-            #If the callback returns true it stops the computation. If it returns false, it continues. 
-            #It must return one of the two
-            callback = callback_optim, 
-            extended_trace = true,
-            outer_iterations = max_steps,
-            iterations = max_steps
-            #,#f_calls_limit = 0
-        )
+        optim_options
     )
     #
     x_results = optim_results.minimizer
@@ -196,22 +221,20 @@ end
 println("")
 println("#"^25)
 println("\n")        
-println("** Optimized efficiency: " , 1.0-obj_result)
+println("** Optimized efficiency   = " , 1.0-obj_result)
 println("** Optimal parameters: ")
 println("   1) disks_thickness     = "        , x_results[1])
 println("   2) phase_shift         = "        , x_results[2])
 println("   3) buffer_smooth       = "        , x_results[3])
 #
 #
-println("** Optimal settings, but r_lens = ",r_lens,": eta = ", SM_main(x_results[1], x_results[2], x_results[3], w0, focal_point, 6*lambda0,gamma_prime,laser_detuning))
-flush(stdout)
+new_r_lens = 6.0
+if r_lens<new_r_lens
+    println("** Optimal settings, but r_lens = ",new_r_lens,": eta = ", SM_main(x_results[1], x_results[2], x_results[3], w0, focal_point, new_r_lens,gamma_prime,laser_detuning))
+    flush(stdout)
+end
  
 
 
 
-################## FUNCTIONS #############################################################################################################
-#
-function rand_range(range)
-    sorted_range = sort(collect(range))
-    (sorted_range[2]-sorted_range[1])*rand()+sorted_range[1]
-end
+
