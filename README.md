@@ -46,6 +46,7 @@ Choice of the box ranges of accepted parameters, that are automatically set to: 
 Maximum allowed amount of, respectively, optimization steps, computational time (in seconds) and consecutive steps where the algorithm is stuck with the same solution.
 
 ## Options
+Global options for the code are available, which are described here below.
 ### System options
 - `fill_until_r_lens_option` \
 If set to `true`, then atoms are positioned up to the fixed radius value `r_lens`, even if this means the introduction of a fraction of the last ring. Otherwise, when set to `false`, then only integer rings are accepted, meaning that the effective radius of the lens can be $\leq$`r_lens`. This latter choice makes the number of atoms $N$ and efficiency $\eta$ depend more sharply on the optimization variables, and it is discouraged.
