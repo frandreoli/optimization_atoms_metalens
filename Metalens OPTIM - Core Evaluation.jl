@@ -1,7 +1,9 @@
 
 ################## MAIN DEFINITION #####################################################################################################################
 #
-function SM_main(disks_thickness, phase_shift, buffer_smooth)
+function SM_main(disks_thickness, phase_shift, buffer_smooth, w0, focal_point, r_lens,gamma_prime,laser_detuning)
+	#
+	w0_x = w0_y = w0
 	#
 	#Lattice creation
 	(r_atoms, n_atoms) = lattice_creation(r_lens, focal_point, disks_thickness,buffer_smooth, phase_shift)
@@ -10,7 +12,7 @@ function SM_main(disks_thickness, phase_shift, buffer_smooth)
 	#Core part (Green's function construction and inversion)
 	E_field_in  = gaussian_beam_plus.(r_atoms[:,1],  r_atoms[:,2],  r_atoms[:,3],  w0_x, w0_y, k0)
 	E_field_in  = [dot(dipoles_polarization,field_polarization) for index in 1:n_atoms].*E_field_in
-	state_coeff = SM_inversion(r_atoms, n_atoms,dipoles_polarization, E_field_in)
+	state_coeff = SM_inversion(r_atoms, n_atoms,dipoles_polarization, E_field_in,gamma_prime,laser_detuning)
 	#
 	#Initializes field arrays
 	zR_in = k0*w0^2/2
@@ -93,12 +95,12 @@ function lattice_creation(r_lens, focal_point, disks_thickness, buffer_zone, pha
 			old_y_max = lattice_array[i,2]/2
 		end
 		if lattice_array[i,1]<max_lattice_const && lattice_array[i,2]<max_lattice_const
-			(r_atoms_new, old_x_max, old_y_max) = lattice_creation_core(r_lens, lattice_array[i,:],r_range[i+1],r_range[i], old_x_max, old_y_max)
+			(r_atoms_new, old_x_max, old_y_max) = lattice_creation_core(r_lens, lattice_array[i,:],r_range[i+1],r_range[i], old_x_max, old_y_max,focal_point)
 			if i>1 && length(r_atoms_old[:,1])>0
 				a_x_variation = abs(lattice_array[i,1]-lattice_array[i-1,1])/lattice_array[i,1]
 				a_y_variation = abs(lattice_array[i,2]-lattice_array[i-1,2])/lattice_array[i,2]
 				if !(a_x_variation>0.01 && a_y_variation>0.01) && buffer_zone>0.0
-					(r_atoms_new, old_x_max, old_y_max) = lattice_creation_core(r_lens, lattice_array[i,:],r_range[i+1],buffer_range[i], old_x_max, old_y_max)
+					(r_atoms_new, old_x_max, old_y_max) = lattice_creation_core(r_lens, lattice_array[i,:],r_range[i+1],buffer_range[i], old_x_max, old_y_max,focal_point)
 					if a_x_variation > a_y_variation
 						indices_order=[1;2]
 					else
@@ -124,16 +126,16 @@ function lattice_creation(r_lens, focal_point, disks_thickness, buffer_zone, pha
 					#
 					(r_atoms_buffer_x_axis, r_atoms_buffer_y_axis) = (lattice_creation_buffer(up_nodes_1_to_axis, up_nodes_2_to_axis,up_nodes_1_to_axis, [-lattice_array[i,indices_order[2]]/2 for ii in 1:length(up_nodes_2_to_axis)],lattice_array[i,indices_order[2]],1))[indices_order]
 					#
-					r_atoms_buffer      = lattice_creation_buffer_z(r_atoms_buffer_x, r_atoms_buffer_y, lattice_array[i,3])#!!!!!!!!!!!!!!!!!!!!!
+					r_atoms_buffer      = lattice_creation_buffer_z(r_atoms_buffer_x, r_atoms_buffer_y, lattice_array[i,3],focal_point)#!!!!!!!!!!!!!!!!!!!!!
 					r_atoms = vcat(r_atoms,r_atoms_buffer)
 					if z_fixed_option=="YES"
-						r_atoms_buffer_axis = lattice_creation_buffer_z(r_atoms_buffer_x_axis, r_atoms_buffer_y_axis, lattice_array[i,3])#!!!!!!!!!!!!!!!!!
+						r_atoms_buffer_axis = lattice_creation_buffer_z(r_atoms_buffer_x_axis, r_atoms_buffer_y_axis, lattice_array[i,3],focal_point)#!!!!!!!!!!!!!!!!!
 					else
-						r_atoms_buffer_axis = lattice_creation_buffer_z(r_atoms_buffer_x_axis, r_atoms_buffer_y_axis, 0.0)
+						r_atoms_buffer_axis = lattice_creation_buffer_z(r_atoms_buffer_x_axis, r_atoms_buffer_y_axis, 0.0,focal_point)
 					end
 					r_atoms = vcat(r_atoms,r_atoms_buffer_axis)
 				else
-					(r_atoms_new, old_x_max, old_y_max) = lattice_creation_core(r_lens, lattice_array[i,:],r_range[i+1],r_range[i], old_x_max, old_y_max)
+					(r_atoms_new, old_x_max, old_y_max) = lattice_creation_core(r_lens, lattice_array[i,:],r_range[i+1],r_range[i], old_x_max, old_y_max,focal_point)
 				end
 			end
 			if length(r_atoms_new)>0
@@ -168,7 +170,7 @@ function boundaries_choice(nAtoms)
     end
 end
 #
-function lattice_creation_core(r_lens, lattice_constants, r_max,r_min, x_shift, y_shift)
+function lattice_creation_core(r_lens, lattice_constants, r_max,r_min, x_shift, y_shift,focal_point)
     a_x=lattice_constants[1]*lambda0 #0.15*lambda0
     a_y=lattice_constants[2]*lambda0 #0.15*lambda0
     a_z=lattice_constants[3]*lambda0 #0.423496*lambda0
@@ -211,51 +213,7 @@ function lattice_creation_core(r_lens, lattice_constants, r_max,r_min, x_shift, 
 	#
 end
 #
-function param_optim_func(disks_thickness,buffer_zone, phase_full_data)
-	shift_array = collect(0.0:0.1:(2*pi))
-	max_eff       = 0.0
-	final_shift   = 0.0
-	for i in 1:length(shift_array)
-		shift_here = shift_array[i]
-		eff_here = param_optim_func_core(shift_here, disks_thickness, phase_full_data,buffer_zone,r_lens*3)
-		if max_eff < eff_here
-			max_eff       = eff_here
-			final_shift   = shift_here
-		end
-	end
-	return final_shift
-end
 #
-function param_optim_func_core(shift, disks_thickness, phase_efficiency,buffer_zone,r_lens_here)
-	#=
-	if phase_ring_integral_option=="NO"
-		phi_func = (r1,r2) -> mod(k0*(focal_point-sqrt(focal_point^2+((r1+r2)/2)^2))+shift,2*pi)
-	else
-		sqrt_f = r -> sqrt(focal_point^2+r^2)
-		integral_phi_func= (r1,r2) -> (r2*sqrt_f(r2)-r1*sqrt_f(r1)+(focal_point^2)*log((r2+sqrt_f(r2))/(r1+sqrt_f(r1))) ) / (2*(r2-r1))
-		phi_func = (r1,r2) -> mod(k0*(focal_point-integral_phi_func(r1,r2))+shift,2*pi)
-	end
-	=#
-	phi_func = (r1,r2) -> mod(k0*(focal_point-sqrt(focal_point^2+((r1+r2)/2)^2))+shift,2*pi)
-	#
-	#
-	int_func(rr0,rr1) = exp(-((2*rr0^2)/w0^2)) - exp(-((2*rr1^2)/w0^2))
-	r_range       = collect(0.0:disks_thickness:r_lens_here)
-	n_phase_disks = length(r_range)-1
-	buffer_range  = vcat(0.0,r_range[2:end-1].+(r_range[2]*buffer_zone))
-	if phase_center_ring_option=="NO"
-    	phase_range   = phi_func.(buffer_range, r_range[2:(n_phase_disks+1)])
-	else
-		phase_range   = phi_func.(r_range[1:(n_phase_disks)], r_range[2:(n_phase_disks+1)])
-	end
-	final_efficiency=0.0
-	for i in 1:length(phase_range)
-		current_efficiency = phase_efficiency[nearest_choice(phase_efficiency[:,2], phase_range[i]),1]
-		final_efficiency+=current_efficiency*int_func(r_range[i],r_range[i+1])
-	end
-	return final_efficiency
-end
-
 function get_upper(pos_array_1,pos_array_2)
 	index_sorted=sort(collect(1:length(pos_array_1)), by=(xx->pos_array_1[xx]))
 	pos_array_x=pos_array_1[index_sorted]
@@ -358,7 +316,7 @@ function line_connect(p1_x, p1_y,p2_x,p2_y, a_2)
 	return (x_points,y_points)
 end
 
-function lattice_creation_buffer_z(r_atoms_buffer_x, r_atoms_buffer_y, a_z_sharp)
+function lattice_creation_buffer_z(r_atoms_buffer_x, r_atoms_buffer_y, a_z_sharp,focal_point)
 	n_points_selected = length(r_atoms_buffer_x)
 	if a_z_sharp>0.0
 		return hcat(repeat(r_atoms_buffer_x,3),repeat(r_atoms_buffer_y,3),[z*a_z_sharp for z in [-1 ; 0 ; 1 ].+0.0 for i in 1:n_points_selected ])

@@ -1,6 +1,5 @@
 #Designed for Julia > 1.5
 using LinearAlgebra, Dates, HDF5, Random, Distributed
-using Suppressor
 include("Metalens OPTIM - SM Functions.jl")
 include("Metalens OPTIM - Core Evaluation.jl")
 const intInf = typemax(Int)
@@ -33,13 +32,11 @@ length(ARGS)>=1 ? args_checked=ARGS[:] : args_checked=["_vacuum","_mirror"][1:1]
 
 ################## GEOMETRICAL PARAMETERS ##############################################################################################################################
 #
-const w0                =    4.0*lambda0
-const focal_point       =    20*lambda0
-const r_lens            =    3*lambda0
-const gamma_prime       =    5.75
-const laser_detuning    =    0.0
-const w0_x              =    w0
-const w0_y              =    w0
+w0                =    4.0*lambda0
+focal_point       =    20*lambda0
+r_lens            =    3*lambda0
+gamma_prime       =    5.75
+laser_detuning    =    0.0
 #
 println("")
 println("#"^25)
@@ -113,7 +110,7 @@ flush(stdout)
 #Objective function
 function objective_func(x) 
     #thickness, phase, buffer
-    return 1.0-SM_main(x[1], x[2], x[3])
+    return 1.0-SM_main(x[1], x[2], x[3], w0, focal_point, r_lens,gamma_prime,laser_detuning)
 end
 #
 #Initializing the optimization
@@ -206,10 +203,9 @@ println("   2) phase_shift         = "        , x_results[2])
 println("   3) buffer_smooth       = "        , x_results[3])
 #
 #
-@suppress begin global const r_lens = 6*lambda0 end
-println("r_lens = ", r_lens)
-println("** Optimal settings, but R=6: eta = ", SM_main(x_results[1], x_results[2], x_results[3]))
+println("** Optimal settings, but r_lens = ",r_lens,": eta = ", SM_main(x_results[1], x_results[2], x_results[3], w0, focal_point, 6*lambda0,gamma_prime,laser_detuning))
 flush(stdout)
+ 
 
 
 

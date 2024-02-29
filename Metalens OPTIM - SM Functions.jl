@@ -2,10 +2,10 @@
 ################## SM CORE EVALUATION FUNCTIONS DEFINITIONS ############################################################################################
 #
 #Function to invert the effective Hamiltonian
-function SM_inversion(r_atoms, n_atoms,dipoles_polarization,E_field_in)
+function SM_inversion(r_atoms, n_atoms,dipoles_polarization,E_field_in,gamma_prime,laser_detuning)
 	SM_green_matrix  =  Array{Complex{TN},2}(undef, n_atoms, n_atoms)
 	time_temp=time()
-	SM_initialize!(SM_green_matrix, r_atoms, dipoles_polarization)
+	SM_initialize!(SM_green_matrix, r_atoms, dipoles_polarization,gamma_prime,laser_detuning)
     #println("Green's matrix initialized in         ", time()-time_temp)
 	time_temp=time()
 	state_coeff  = SM_green_matrix\E_field_in
@@ -31,7 +31,7 @@ end
 ################## INITIALIZATION FUNCTIONS DEFINITIONS ################################################################################################
 #
 #Function to fill the green tensor for the SM
-function SM_initialize!(SM_green_matrix, r_vecs, p)
+function SM_initialize!(SM_green_matrix, r_vecs, p,gamma_prime,laser_detuning)
     na = length(r_vecs[:,1])
 	r_vecs_x = r_vecs[:,1].*k0
 	r_vecs_y = r_vecs[:,2].*k0
