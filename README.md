@@ -11,6 +11,11 @@ On the other hand, the object function is highly irregular (and in principle non
 
 
 # Options
+The definitions of the main physical variables and some options (namely, `z_fixed_option` and `phase_center_ring_option`) is defined in the repository [_frandreoli/atoms_optical_response_](https://github.com/frandreoli/atoms_optical_response). Additional options are available for this specific optimization problem, that we describe below.
+
+### System options
+- `fill_until_r_lens_option` \
+When set to `true`, atoms are positioned up to the fixed radius value `r_lens`, even if this means the introduction of a fraction of the last ring. Otherwise, when set to `false`, then only integer rings are accepted, meaning that the effective radius of the lens can be $\leq$`r_lens`. This latter choice makes the number of atoms $N$ and efficiency $\eta$ depend more sharply on the optimization variables, and it is discouraged.
 
 ## Solvers
 
