@@ -7,10 +7,11 @@ include("Metalens OPTIM - Core Evaluation.jl")
 
 ################## OPTIONS ####################################################################################################################################
 #
-const z_fixed_option              =      ["YES" ; "NO"][1] #must be yes
+const z_fixed_option               =      ["YES" ; "NO"][1] #must be yes
+const phase_center_ring_option     =      ["YES" ; "NO"][1] #must be yes
 #const shift_to_match_option       =      ["YES" ; "NO"][2] #must be no
-const phase_center_ring_option    =      ["YES" ; "NO"][1] #must be yes
 #const phase_ring_integral_option  =      ["YES" ; "NO"][2] #must be no (?)
+const initial_guess_option         =      [true ; false][1]
 #
 
 
@@ -33,7 +34,7 @@ length(ARGS)>=1 ? args_checked=ARGS[:] : args_checked=["_vacuum","_mirror"][1:1]
 #
 const w0                =    4.0*lambda0
 const focal_point       =    20*lambda0
-const r_lens            =    5.0*lambda0
+const r_lens            =    6*lambda0
 const gamma_prime       =    5.75
 const laser_detuning    =    0.0
 const w0_x              =    w0
@@ -71,47 +72,83 @@ println("#"^25)
 #
 #
 #Optimization set up
+#
 using BlackBoxOptim
 #
 thickness_range = (0.1,0.8)
 phase_range = (-pi,pi)
 buffer_range = (0,0.5)
+initial_guess = [2.0/3, 1.0775,0.20048828125]#0.2]
 #
+chosen_solver = (
+    :adaptive_de_rand_1_bin,                             #1  Differential Evolution optimizer (metaheuristics)
+    :adaptive_de_rand_1_bin_radiuslimited,               #2  Suggested by developers
+    :resampling_memetic_search,                          #3  Memetic algorithm 
+    :resampling_inheritance_memetic_search,              #4  Memetic algorithm #VERY BAD
+    :simultaneous_perturbation_stochastic_approximation, #5  Stochastic Approximation algorithm #ERROR
+    :separable_nes,                                      #6  Natural Evolution Strategies
+    :xnes,                                               #7  Natural Evolution Strategies  #####
+    :dxnes,                                              #8  Natural Evolution Strategies  
+    :generating_set_search,                              #9  Generating set (direct) search #BEST UP TO NOW #####
+    :probabilistic_descent,                              #10 Generating set (direct) search #####
+    :borg_moea,                                          #11 http://borgmoea.org/ #Multi-objective optimization
+)[7]
 #
 println("")
 println("The parameter ranges are: ")
 println("thickness_range = ", thickness_range)
 println("phase_range = ", phase_range)
 println("buffer_range = ", buffer_range)
+if initial_guess_option
+    println("The initial guess is: ")
+    println("- thickness guess: ", initial_guess[1])
+    println("- phase guess: "    , initial_guess[2])
+    println("- buffer guess: "   , initial_guess[3])
+end
+println("Using the solver: "   , chosen_solver)
 println("")
 println("#"^25)
 println("\n\n")
-#
 flush(stdout)
 #
-chosen_solver = (
-    :adaptive_de_rand_1_bin, #Differential Evolution optimizer (metaheuristics)
-    :adaptive_de_rand_1_bin_radiuslimited, #Suggested by developers
-    :resampling_memetic_search, #Memetic algorithm #1
-    :resampling_inheritance_memetic_search, #Memetic algorithm #2
-    :simultaneous_perturbation_stochastic_approximation, #Stochastic Approximation algorithm
-)[2]
-#
 function objective_func(x)
-    (disks_thickness, phase_shift, buffer_smooth) = Tuple(x)
-    SM_main(disks_thickness, phase_shift, buffer_smooth)
+    # (disks_thickness, phase_shift, buffer_smooth) = Tuple(x)
+    return 1.0-SM_main(x[1], x[2], x[3])
 end
 #
-optim_results = bboptimize(objective_func; 
-    Method = chosen_solver, 
-    SearchRange = [thickness_range, phase_range, buffer_range], 
-    NumDimensions = 3,
-    TraceMode = :compact, #:verbose, #:silent,
-    TraceInterval = 1,
-    PopulationSize = 50, #default is 50
-    FitnessCallback = flush(stdout),
-    CallbackFrequency = 1
-)
+if initial_guess_option
+    #
+    println("** STARTING the optimization with an initial guess **")
+    #
+    optim_results = bboptimize(objective_func, initial_guess; 
+        Method = chosen_solver, 
+        SearchRange = [thickness_range, phase_range, buffer_range], 
+        NumDimensions = 3,
+        TraceMode = :compact, #:verbose, #:silent,
+        TraceInterval = 1,#1,
+        PopulationSize = 50, #default is 50
+        CallbackFunction = x -> begin println("Efficiency = $(1-best_fitness(x)), $(best_candidate(x))"); flush(stdout) end,
+        CallbackInterval = 10,#1
+        TargetFitness = 0.0
+    )
+    #
+else
+    #
+    println("** STARTING the optimization with NO initial guess **")
+    #
+    optim_results = bboptimize(objective_func; 
+        Method = chosen_solver, 
+        SearchRange = [thickness_range, phase_range, buffer_range], 
+        NumDimensions = 3,
+        TraceMode = :compact, #:verbose, #:silent,
+        TraceInterval = 1,
+        PopulationSize = 50, #default is 50
+        CallbackFunction = x -> begin println("Efficiency = $(1-best_fitness(x)), $(best_candidate(x))"); flush(stdout) end,
+        CallbackInterval = 10,#1
+        TargetFitness = 0.0
+    )
+    #
+end
 #
 x_results=best_candidate(optim_results)
 #
