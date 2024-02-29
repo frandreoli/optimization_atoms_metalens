@@ -1,4 +1,4 @@
-#Designed for Julia > 1.5
+#Designed for Julia higher than 1.5
 using LinearAlgebra, Dates, HDF5, Random, Distributed
 include("Metalens OPTIM - SM Functions.jl")
 include("Metalens OPTIM - Core Evaluation.jl")
@@ -9,16 +9,16 @@ const intInf = typemax(Int)
 ################## OPTIONS ####################################################################################################################################
 #
 #System options
-const z_fixed_option               =      ["YES" ; "NO"][1] #must be yes
-const phase_center_ring_option     =      ["YES" ; "NO"][1] #must be yes
-const fill_until_r_lens_option     =      [true ; false][1] #must be true
+const z_fixed_option               =      ["YES" ; "NO"][1] #It must be 1
+const phase_center_ring_option     =      ["YES" ; "NO"][1] #It must be 1
+const fill_until_r_lens_option     =      [true ; false][1] #It must be 1
 #
 #Optimization options
-const initial_guess_option         =      [true ; false][2]
-const strictly_monotonic_option    =      [true ; false][1]
+const initial_guess_option         =      [true ; false][2] #If true, it feeds the algorithm with an initial guess
+const monotonic_escape_option      =      [true ; false][1] #If true, it quits in case the optimization exhibits a non-monotonic behviour
 #
-#Code options
-const debug_r_atoms_option         =      [true ; false][2]
+#Code generic options
+const debug_r_atoms_option         =      [true ; false][2] #If true, it saves the atomic positions for an illustrative metalens and quits
 
 
 ################## FIXED PARAMETERS ####################################################################################################################################
@@ -183,7 +183,7 @@ if use_blackboxoptim_option
         TraceMode = :compact, #:verbose, #:silent,
         TraceInterval = 1,#1,
         PopulationSize = 50, #default is 50
-        CallbackFunction = x -> begin println("Efficiency = $(1-best_fitness(x)), $(best_candidate(x))"); flush(stdout) end,
+        CallbackFunction = x -> begin println(" * Efficiency = $(1-best_fitness(x)), $(best_candidate(x))\n"); flush(stdout) end,
         CallbackInterval = 5,#1
         TargetFitness = 0.0, 
         MaxFuncEvals = max_steps,
@@ -201,7 +201,7 @@ else
         println(" * Efficiency = ", 1.0-current_state.value,"\n")
         flush(stdout)
         #
-        if strictly_monotonic_option
+        if monotonic_escape_option
             if current_state.value>global_objective_value
                 warn_string_monotonic = "The optimization has become non monotonic"
                 println(("#"^25)*"\n****** WARNING: "*warn_string_monotonic*" *****\n"*("#"^25))
