@@ -11,7 +11,9 @@ On the other hand, the object function is highly irregular (and in principle non
 
 
 # Setting the code
-The definitions of the main physical variables and some options (namely, `z_fixed_option` and `phase_center_ring_option`) is defined in the repository [_frandreoli/atoms_optical_response_](https://github.com/frandreoli/atoms_optical_response). Additional options are available for this specific optimization problem, that we describe below. The result of the optimization are printed at each step into the `stdout` (by flushing it at each step, to avoid loss of data after a potential crash). In a linux environment, a _shell_ wrapper is provided to redirect the `stdout` and `stderr` on two different files with proper labels.
+The definitions of the main physical variables and some options (namely, `z_fixed_option` and `phase_center_ring_option`) is defined in the repository [_frandreoli/atoms_optical_response_](https://github.com/frandreoli/atoms_optical_response). Additional options are available for this specific optimization problem, that we describe below. 
+
+The results of the optimization are printed at each step into the `stdout` (by flushing it at each step, to avoid loss of data after a potential crash). In a linux environment, a _shell_ wrapper is provided to redirect the `stdout` and `stderr` on two different files with proper labels.
 
 ## Solvers
 The solvers can be chosen by defining a proper value of the integer variable `solver_algorithm_index`, chosen among the following list:
