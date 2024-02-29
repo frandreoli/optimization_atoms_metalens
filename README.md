@@ -4,7 +4,7 @@ In Ref. \[[1](#Andreoli2023b)\], the concept was introduced of a thin metalens c
 
 ## Overview of the problem
 
-The metalens efficiency $\eta$ can be numerically computed via exact coupled-dipole equations, as further implemented and described in the repository [_frandreoli/atoms_optical_response_](https://github.com/frandreoli/atoms_optical_response). The computational complexity of this core operation roughly scales as the creation and inversion of a $N\times N$, complex-symmetric matrix, where $N$ is the number of atoms. Maximizing $\eta(\Delta R, \phi\_0, \alpha)$ is a global optimization problem over three bounded parameters. The remarkably small number of variables and their rectangular bounds highly reduce the parameter space, largely helping to simplify the optimization. 
+The metalens efficiency $\eta$ can be numerically computed via exact coupled-dipole equations, as further implemented and described in the repository [_frandreoli/atoms_optical_response_](https://github.com/frandreoli/atoms_optical_response). The computational complexity of this core operation roughly scales as the creation and inversion of a $N\times N$, complex-symmetric matrix, where $N$ is the number of atoms. Maximizing $\eta(\Delta R, \phi\_0, \alpha)$ is a global optimization problem over three box-bounded parameters. The remarkably small number of variables and their rectangular bounds highly reduce the parameter space, largely helping to simplify the optimization. 
 
 On the other hand, the object function is highly irregular (and in principle non-continuous and non-differentiable), and it exhibits an extremely large number of local minima. This is further complicated by the dependence of $N$ from the set of variables $\Delta R$, $\phi\_0$ and $\alpha$. Overall, relevant sizes of the metalens are associated to number of atoms as large as $N\sim 10^4-10^5$, which can make the evaluation of $\eta(\Delta R, \phi\_0, \alpha)$ remarkably slow, even when speeding up the linear algebra by feeding (up to) $32$ _multiple cores_ to OpenBlas or accelerating other internal operations by parrallelizing them on $\geq 32$ cores. 
 
@@ -16,7 +16,7 @@ The definitions of the main physical variables and some options (namely, `z_fixe
 ## Solvers
 The solvers can be chosen by defining a proper value of the integer variable `solver_algorithm_index`, chosen among the following list:
 
-- From [_BlackBoxOptim_](https://github.com/robertfeldt/BlackBoxOptim.jl): \ 
+- From [_BlackBoxOptim_](https://github.com/robertfeldt/BlackBoxOptim.jl):
 1)  `:adaptive_de_rand_1_bin` _Differential Evolution optimizer (metaheuristics)._
 2)  `:adaptive_de_rand_1_bin_radiuslimited` _Differential Evolution optimizer (metaheuristics) with limited radius._ 
 3)  `:resampling_memetic_search` _Memetic algorithm._
@@ -28,15 +28,15 @@ The solvers can be chosen by defining a proper value of the integer variable `so
 9)  `:generating_set_search` _Generating-set direct search._
 10) `:probabilistic_descent` _Generating-set direct search, with probabilistic descent._
 
- 
+- From Optim (https://julianlsolvers.github.io/Optim.jl/stable/):
+11) `ParticleSwarm()` _Particle Swarm Optimization_
+12) `SAMIN()` _Simulated Annealing with intrinsic bounds_
+13) `SimulatedAnnealing()` _Simulated Annealing*_
+14) `NelderMead()` _Nelder-Mead*_
 
-- From Optim (https://julianlsolvers.github.io/Optim.jl/stable/): \
-11 Particle Swarm Optimization....................................................(best globally)
-12 Simulated Annealing with intrinsic bounds......................................(not good: why?)
-13 Simulated Annealing (bounds forced within the object function).................(not good)
-14 Nelder-Mead (bounds forced within the object function).........................(not good)
+*All the solvers are design to directly deal with box-bounded problems, except for choices 13 and 14, where the box constraint is embedded inside the object function (i.e. it is set to return a very inefficient value when the parameters exit the box bounds. This is generally not recommendable, and their behaviour is indeed underwhelming. 
 
-## Parameters
+## Optimization settings
 
 ## Options
 ### System options
