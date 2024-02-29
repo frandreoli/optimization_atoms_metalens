@@ -34,9 +34,16 @@ The solvers can be chosen by defining a proper value of the integer variable `so
 13) `SimulatedAnnealing()` _Simulated Annealing*_
 14) `NelderMead()` _Nelder-Mead*_
 
-*All the solvers are design to directly deal with box-bounded problems, except for choices 13 and 14, where the box constraint is embedded inside the object function (i.e. it is set to return a very inefficient value when the parameters exit the box bounds. This is generally not recommendable, and their behaviour is indeed underwhelming. 
+_*All the solvers are design to directly deal with box-bounded problems, except for choices 13 and 14, where the box constraint is embedded inside the object function (i.e. this latter is set to return a very inefficient value when the parameters exit the box bounds. This is generally not recommendable, and their behaviour is indeed underwhelming._ 
 
 ## Optimization settings
+Specific settings related to the chosen solver can be implemented when calling the solver in the code. Generic settings are the following:
+
+- `thickness_range, phase_range, buffer_range` \
+Choice of the box ranges of accepted parameters, that are automatically set to: thickness $0.1<\Delta R<0.8$, phase $-\pi<\phi\_0\leq \pi$ and buffer $0\leq \alpha\leq 0.5$.
+
+- `max_steps, max_time_sec, max_stuck_sequence` \
+Maximum allowed amount of, respectively, optimization steps, computational time (in seconds) and consecutive steps where the algorithm is stuck with the same solution.
 
 ## Options
 ### System options
