@@ -14,8 +14,8 @@ const phase_center_ring_option     =      ["YES" ; "NO"][1] #must be yes
 const fill_until_r_lens_option     =      [true ; false][1] #must be true
 #
 #Optimization options
-const initial_guess_option         =      [true ; false][1]
-const use_blackboxoptim_option     =      [true ; false][2]
+const initial_guess_option         =      [true ; false][2]
+const strictly_monotonic_option    =      [true ; false][1]
 #
 #Code options
 const debug_r_atoms_option         =      [true ; false][2]
@@ -37,7 +37,7 @@ const field_polarization   = [1.0 ; 0.0 ; 0.0]
 #
 const w0                =    4.0
 const focal_point       =    20.0
-const r_lens            =    3.0
+const r_lens            =    7.0
 const gamma_prime       =    5.75
 const laser_detuning    =    0.0
 #
@@ -54,6 +54,41 @@ println("#"^25)
 #
 
 
+################## OPTIMIZATION PARAMETERS ################################################################################################
+#
+#Choice of the algorithm
+solver_algorithm_index = 11
+#
+#From BlackBoxOptim (https://github.com/robertfeldt/BlackBoxOptim.jl):
+#1  - Differential Evolution optimizer (metaheuristics) (suggested by developers)...(good)
+#2  - Differential Evolution optimizer (metaheuristics) with limited radius.........(good)
+#3  - Memetic algorithm.............................................................
+#4  - Memetic algorithm with inheritance............................................(bad)
+#5  - Stochastic Approximation algorithm............................................(worst)
+#6  - Natural Evolution Strategies - separable......................................(good globally)
+#7  - Natural Evolution Strategies - exponential....................................(very good globally)
+#8  - Natural Evolution Strategies - exponential - distance-weighted................
+#9  - Generating-set direct search..................................................(good in accuracy)
+#10 - Generating-set direct search, with probabilistic descent.......................
+#
+#From Optim (https://julianlsolvers.github.io/Optim.jl/stable/):
+#11 - Particle Swarm Optimization....................................................(best globally)
+#12 - Simulated Annealing with intrinsic bounds......................................(not good: why?)
+#13 - Simulated Annealing (bounds forced within the object function).................(not good)
+#14 - Nelder-Mead (bounds forced within the object function).........................(not good)
+#
+#Generic parameters
+const max_steps          = [intInf ; 2][1]
+const max_time_sec       = [intInf ; 180][1]
+const max_stuck_sequence = [intInf ; 50][1]
+#
+#Physical ranges and guess
+const thickness_range    = (0.1,0.8)
+const phase_range        = (-3.141592653589793,3.141592653589793)
+const buffer_range       = (0.,0.5)
+const initial_guess      = [2.0/3, 1.0775,0.20048828125]
+
+
 ################## FUNCTIONS #############################################################################################################
 #
 function rand_range(range)
@@ -64,14 +99,6 @@ end
 
 ################## OPTIMIZATION ###########################################################################################################
 #
-#Optimization parameters
-const thickness_range = (0.1,0.8)
-const phase_range = (-3.141592653589793,3.141592653589793)
-const buffer_range = (0.,0.5)
-const initial_guess = [2.0/3, 1.0775,0.20048828125]
-const max_steps    = [intInf ; 2][1]
-const max_time_sec = [intInf ; 180][1]
-#
 const lower_range = (x->sort(collect(x))[1]).([thickness_range, phase_range, buffer_range])
 const upper_range = (x->sort(collect(x))[2]).([thickness_range, phase_range, buffer_range])
 #
@@ -80,46 +107,44 @@ if debug_r_atoms_option
 end
 #
 #Definition of the solver
+solver_algorithm_index<=10 ? use_blackboxoptim_option = true : use_blackboxoptim_option = false
+!(solver_algorithm_index in collect(1:14))  ? error("Undefined algorithm index") : nothing
 if use_blackboxoptim_option
     #
     using BlackBoxOptim
-    #See the list of solvers at: https://github.com/robertfeldt/BlackBoxOptim.jl
     chosen_solver = (
-        :adaptive_de_rand_1_bin,                             #1  Differential Evolution optimizer (metaheuristics)
-        :adaptive_de_rand_1_bin_radiuslimited,               #2  Suggested by developers
-        :resampling_memetic_search,                          #3  Memetic algorithm 
-        :resampling_inheritance_memetic_search,              #4  Memetic algorithm #VERY BAD
-        :simultaneous_perturbation_stochastic_approximation, #5  Stochastic Approximation algorithm #ERROR
-        :separable_nes,                                      #6  Natural Evolution Strategies
-        :xnes,                                               #7  Natural Evolution Strategies  #####
-        :dxnes,                                              #8  Natural Evolution Strategies  
-        :generating_set_search,                              #9  Generating set (direct) search #BEST UP TO NOW #####
-        :probabilistic_descent,                              #10 Generating set (direct) search #####
-        :borg_moea,                                          #11 http://borgmoea.org/ #Multi-objective optimization
-    )[7]
+        :adaptive_de_rand_1_bin,                             
+        :adaptive_de_rand_1_bin_radiuslimited,               
+        :resampling_memetic_search,                           
+        :resampling_inheritance_memetic_search,              
+        :simultaneous_perturbation_stochastic_approximation, 
+        :separable_nes,                                      
+        :xnes,                                              
+        :dxnes,                                                
+        :generating_set_search,  
+        :probabilistic_descent,                               
+    )[solver_algorithm_index]
 else
     using Optim
-    #See the list of gradient-free (bounded) solvers at: https://julianlsolvers.github.io/Optim.jl/stable/
     chosen_solver = (
-        ParticleSwarm(lower_range, upper_range, 5),          #1  Particle Swarm Optimization
-        SAMIN(; rt=0.5)                                      #2  Simulated Annealing with intrinsic bounds
-        #
-        #Wrapping into Fminbox results in errors https://github.com/SciML/Optimization.jl/issues/179
-        #,Fminbox(SimulatedAnnealing())                      #3  Simulated Annealing with externally forced bounds
-    )[3]
+        ParticleSwarm(lower_range, upper_range, 40),          
+        SAMIN(; rt=0.9),
+        SimulatedAnnealing(),
+        NelderMead()
+    )[solver_algorithm_index-10]
 end
 #
 #Printing data
 println("")
 println("The parameter ranges are: ")
-println("thickness_range = ", thickness_range)
-println("phase_range = ", phase_range)
-println("buffer_range = ", buffer_range)
+println("thickness_range   = ", thickness_range)
+println("phase_range       = ", phase_range)
+println("buffer_range      = ", buffer_range)
 if initial_guess_option
-    println("The initial guess is: ")
-    println("- thickness guess: ", initial_guess[1])
-    println("- phase guess: "    , initial_guess[2])
-    println("- buffer guess: "   , initial_guess[3])
+    println("The initial guesses are: ")
+    println("- thickness guess = ", initial_guess[1])
+    println("- phase guess     = "    , initial_guess[2])
+    println("- buffer guess    = "   , initial_guess[3])
 end
 println("Using the solver: "   , String(Symbol(chosen_solver)))
 println("")
@@ -140,7 +165,7 @@ if initial_guess_option
     initial_guess_Optim = initial_guess
 else
     println("** STARTING the optimization WITHOUT an initial guess **")
-    blackboxoptim_input = (objective_func)
+    blackboxoptim_input = (objective_func,)
     initial_guess_Optim = rand_range.([thickness_range, phase_range, buffer_range])
 end
 #
@@ -175,16 +200,26 @@ else
     function callback_optim(current_state)
         println(" * Efficiency = ", 1.0-current_state.value,"\n")
         flush(stdout)
-        if current_state.value<global_objective_value
-            return true
+        #
+        if strictly_monotonic_option
+            if current_state.value>global_objective_value
+                warn_string_monotonic = "The optimization has become non monotonic"
+                println(("#"^25)*"\n****** WARNING: "*warn_string_monotonic*" *****\n"*("#"^25))
+                @warn warn_string_monotonic
+                return true
+            end
         end
+        #
         if current_state.value==global_objective_value
             global global_count_stuck+=1
         else
             global global_count_stuck=0
             global global_objective_value = current_state.value
         end
-        if global_count_stuck>10 || time()-time_start_optim > max_time_sec
+        if global_count_stuck>max_stuck_sequence || time()-time_start_optim > max_time_sec
+            warn_string_stuck_or_time = "The optimization been stuck too many times with the same result OR time exceeded"
+            println(("#"^25)*"\n****** WARNING: "*warn_string_stuck_or_time*" *****\n"*("#"^25))
+            @warn warn_string_stuck_or_time
             return true
         else
             return false
@@ -203,14 +238,25 @@ else
         #,#f_calls_limit = 0
     )
     #
-    optim_results = Optim.optimize(
-        objective_func,
-        lower_range, 
-        upper_range, 
-        initial_guess_Optim,
-        chosen_solver,
-        optim_options
-    )
+    if solver_algorithm_index<=12
+        #
+        optim_construct = (objective_func,lower_range,upper_range,initial_guess_Optim,chosen_solver,optim_options)
+        #
+    else
+        #
+        function objective_func_bounded(x)
+            for index in 1:length(x)
+                if x[index]>upper_range[index] || x[index]<lower_range[index]
+                    return 10
+                end
+            end
+            return objective_func(x)
+        end
+        #
+        optim_construct = (objective_func_bounded,initial_guess_Optim,chosen_solver,optim_options)
+    end
+    #
+    optim_results = Optim.optimize(optim_construct...)
     #
     x_results = optim_results.minimizer
     obj_result = optim_results.minimum
