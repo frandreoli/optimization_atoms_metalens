@@ -16,7 +16,7 @@ The definitions of the main physical variables and some options (namely, `z_fixe
 ## Solvers
 The solvers can be chosen by defining a proper value of the integer variable `solver_algorithm_index`, chosen among the following list:
 
-- From [_BlackBoxOptim_](https://github.com/robertfeldt/BlackBoxOptim.jl):
+- From [BlackBoxOptim](https://github.com/robertfeldt/BlackBoxOptim.jl):
 1)  `:adaptive_de_rand_1_bin` _Differential Evolution optimizer (metaheuristics)._
 2)  `:adaptive_de_rand_1_bin_radiuslimited` _Differential Evolution optimizer (metaheuristics) with limited radius._ 
 3)  `:resampling_memetic_search` _Memetic algorithm._
@@ -28,7 +28,7 @@ The solvers can be chosen by defining a proper value of the integer variable `so
 9)  `:generating_set_search` _Generating-set direct search._
 10) `:probabilistic_descent` _Generating-set direct search, with probabilistic descent._
 
-- From Optim (https://julianlsolvers.github.io/Optim.jl/stable/):
+- From [Optim](https://julianlsolvers.github.io/Optim.jl/stable/):
 11) `ParticleSwarm()` _Particle Swarm Optimization_
 12) `SAMIN()` _Simulated Annealing with intrinsic bounds_
 13) `SimulatedAnnealing()` _Simulated Annealing*_
@@ -56,7 +56,7 @@ If set to `true`, then atoms are positioned up to the fixed radius value `r_lens
 If set to `true`, then an initial guess `initial_guess` is fed into the chosen optimization algorithm. Otherwise, when set to `false`, then `initial_guess` is randomly initialized.
 
 - `monotonic_escape_option` \
-If set to `true`, then the code stops the optimization flow if it detects that a worst efficiency is proposed as the new optimal one. We observed this unexpected behaviour with the solver `SAMIN()` of the library [_Optim_](https://github.com/JuliaNLSolvers/Optim.jl).
+If set to `true`, then the code stops the optimization flow if it detects that a worst efficiency is proposed as the new optimal one. We observed this unexpected behaviour with the solver `SAMIN()` of the library [Optim](https://github.com/JuliaNLSolvers/Optim.jl).
 
 ### Supplementary options
 - `debug_r_atoms_option` \
