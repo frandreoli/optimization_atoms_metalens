@@ -14,6 +14,27 @@ On the other hand, the object function is highly irregular (and in principle non
 The definitions of the main physical variables and some options (namely, `z_fixed_option` and `phase_center_ring_option`) is defined in the repository [_frandreoli/atoms_optical_response_](https://github.com/frandreoli/atoms_optical_response). Additional options are available for this specific optimization problem, that we describe below. The result of the optimization are printed at each step into the `stdout` (by flushing it at each step, to avoid loss of data after a potential crash). In a linux environment, a _shell_ wrapper is provided to redirect the `stdout` and `stderr` on two different files with proper labels.
 
 ## Solvers
+The solvers can be chosen by defining a proper value of the integer variable `solver_algorithm_index`, chosen among the following list:
+
+- From [_BlackBoxOptim_](https://github.com/robertfeldt/BlackBoxOptim.jl): \ 
+1)  `:adaptive_de_rand_1_bin` _Differential Evolution optimizer (metaheuristics)._
+2)  `:adaptive_de_rand_1_bin_radiuslimited` _Differential Evolution optimizer (metaheuristics) with limited radius._ 
+3)  `:resampling_memetic_search` _Memetic algorithm._
+4)  `:resampling_inheritance_memetic_search` _Memetic algorithm with inheritance._
+5)  `:simultaneous_perturbation_stochastic_approximation` _Stochastic Approximation algorithm._
+6)  `:separable_nes` _Natural Evolution Strategies - separable._
+7)  `:xnes` _Natural Evolution Strategies - exponential._
+8)  `:dxnes` _Natural Evolution Strategies - exponential - distance-weighted._
+9)  `:generating_set_search` _Generating-set direct search._
+10) `:probabilistic_descent` _Generating-set direct search, with probabilistic descent._
+
+ 
+
+- From Optim (https://julianlsolvers.github.io/Optim.jl/stable/): \
+11 Particle Swarm Optimization....................................................(best globally)
+12 Simulated Annealing with intrinsic bounds......................................(not good: why?)
+13 Simulated Annealing (bounds forced within the object function).................(not good)
+14 Nelder-Mead (bounds forced within the object function).........................(not good)
 
 ## Parameters
 
@@ -31,8 +52,7 @@ If set to `true`, then the code stops the optimization flow if it detects that a
 
 ### Supplementary options
 - `debug_r_atoms_option` \
-If set to `true`, then the code does not perform any optimization, but it rather export on an `HDF5` files 
-
+If set to `true`, then the code does not perform any optimization, but it rather export on an `HDF5` files the exact atomic positions of an illustrative atomic metalens.
 
 
 # References 
