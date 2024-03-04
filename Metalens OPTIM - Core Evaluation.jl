@@ -343,5 +343,5 @@ function debug_r_atoms(r_lens , focal_point, disks_thickness,buffer_smooth, phas
     else
         h5write_multiple("r_atoms_NOfill_"*name_add,[("r_atoms", r_atoms)])
     end
-    error("CHECK COMPLETED")
+    error("CHECK COMPLETED. CORRECT EXIT.s")
 end
