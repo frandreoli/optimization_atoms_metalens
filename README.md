@@ -61,8 +61,8 @@ If set to `true`, then an initial guess `initial_guess` is fed into the chosen o
 If set to `true`, then the code stops the optimization flow if it detects that a worst efficiency is proposed as the new optimal one. We observed this unexpected behaviour with the solver `SAMIN()` of the library [Optim](https://github.com/JuliaNLSolvers/Optim.jl).
 
 ### Supplementary options
-- `debug_r_atoms_option` \
-If set to `true`, then the code does not perform any optimization, but it rather export on an `HDF5` files the exact atomic positions of an illustrative atomic metalens.
+- `debug_option` \
+If set to `R_ATOMS` or `ETA`, then the code does not perform any optimization. On the contrary, in the first case it export on an `HDF5` files the exact atomic positions of an illustrative atomic metalens. In the second case, it computes and saves the value of $\eta$ for illustrative settings.
 
 
 # References 
