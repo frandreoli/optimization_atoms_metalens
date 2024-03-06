@@ -359,6 +359,7 @@ function debug_eta(r_lens_debug,w0_debug,focal_point_debug,gamma_prime_debug,las
     println("gamma_prime = ", gamma_prime_debug)
     println("r_lens = ", r_lens_debug)
     println("focal_point = ", focal_point_debug)
+	println("debug parameters = ", parameters_debug)
     println("")
     println("#"^25)
 	#

@@ -14,11 +14,11 @@ const phase_center_ring_option     =      ["YES" ; "NO"][1] #It must be 1
 const fill_until_r_lens_option     =      [true ; false][1] #It must be 1
 #
 #Optimization options
-const initial_guess_option         =      [true ; false][1] #If true, it feeds the algorithm with an initial guess
+const initial_guess_option         =      [true ; false][2] #If true, it feeds the algorithm with an initial guess
 const monotonic_escape_option      =      [true ; false][1] #If true, it quits in case the optimization exhibits a non-monotonic behaviour
 #
 #Code generic options
-const debug_option                 =      [nothing ; "ETA" ; "R_ATOMS"][2] 
+const debug_option                 =      [nothing ; "ETA" ; "R_ATOMS"][2]
 #If "ETA", it computes the efficiency for an illustrative metalens and quits
 #If "R_ATOMS", it saves the atomic positions for an illustrative metalens and quits
 
@@ -110,7 +110,10 @@ if debug_option == "R_ATOMS"
 end
 #
 if debug_option == "ETA"
-    parameters_debug     = [0.6750965215553976, 1.1319090308946498, 0.46835704963894703] #[0.704199570451851, 1.3429376990624875, 0.26280032985692664]
+    parameters_debug = [2.0/3, 1.0775,0.20048828125]
+    #[2.0/3, 1.0775,0.20048828125]
+    #[0.6750965215553976, 1.1319090308946498, 0.46835704963894703]
+    #[0.704199570451851, 1.3429376990624875, 0.26280032985692664]
     debug_eta(10.0,w0 ,focal_point, gamma_prime , laser_detuning,parameters_debug)
 end
 #
