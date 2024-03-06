@@ -333,9 +333,11 @@ function lattice_creation_buffer_z(r_atoms_buffer_x, r_atoms_buffer_y, a_z_sharp
 		return hcat(repeat(r_atoms_buffer_x,3),repeat(r_atoms_buffer_y,3),[z*(z_func(sqrt(r_atoms_buffer_x[i]^2+r_atoms_buffer_y[i]^2))) for z in [-1 ; 0 ; 1 ].+0.0 for i in 1:n_points_selected ])
 	end
 end
-
-
-
+#
+#
+#
+#Debug functions
+#
 function debug_r_atoms(r_lens , focal_point, disks_thickness,buffer_smooth, phase_shift)
     (r_atoms,n_atoms) = lattice_creation(r_lens , focal_point, disks_thickness,buffer_smooth, phase_shift) 
     if fill_until_r_lens_option
@@ -343,5 +345,25 @@ function debug_r_atoms(r_lens , focal_point, disks_thickness,buffer_smooth, phas
     else
         h5write_multiple("r_atoms_NOfill_"*name_add,[("r_atoms", r_atoms)])
     end
-    error("CHECK COMPLETED. CORRECT EXIT.s")
+    error("CHECK COMPLETED. CORRECT EXIT.")
+end
+#
+function debug_eta(r_lens_debug,w0_debug,focal_point_debug,gamma_prime_debug,laser_detuning_debug,parameters_debug)
+	#
+	println("")
+    println("#"^25)
+    println("")
+	println(" **** Entering the DEBUG mode **** ")
+    println("The initial settings are: ")
+    println("w0 = ",w0_debug)
+    println("gamma_prime = ", gamma_prime_debug)
+    println("r_lens = ", r_lens_debug)
+    println("focal_point = ", focal_point_debug)
+    println("")
+    println("#"^25)
+	#
+	#thickness, phase, buffer
+	eta_debug = SM_main(parameters_debug[1], parameters_debug[2], parameters_debug[3], w0_debug, focal_point_debug, r_lens_debug,gamma_prime_debug,laser_detuning_debug)
+    println(" **** The debug efficiency reads: eta = ", eta_debug,"  ****  ")
+    error("DEBUG EFFICIENCY COMPUTED. CORRECT EXIT.")
 end

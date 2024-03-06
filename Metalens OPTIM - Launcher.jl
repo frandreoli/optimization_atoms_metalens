@@ -14,13 +14,13 @@ const phase_center_ring_option     =      ["YES" ; "NO"][1] #It must be 1
 const fill_until_r_lens_option     =      [true ; false][1] #It must be 1
 #
 #Optimization options
-const initial_guess_option         =      [true ; false][2] #If true, it feeds the algorithm with an initial guess
-const monotonic_escape_option      =      [true ; false][1] #If true, it quits in case the optimization exhibits a non-monotonic behviour
+const initial_guess_option         =      [true ; false][1] #If true, it feeds the algorithm with an initial guess
+const monotonic_escape_option      =      [true ; false][1] #If true, it quits in case the optimization exhibits a non-monotonic behaviour
 #
 #Code generic options
-const debug_r_atoms_option         =      [true ; false][2] #If true, it saves the atomic positions for an illustrative metalens and quits
-const debug_eta_option             =      [true ; false][2] #If true, it computes the efficiency for an illustrative metalens and quits
-
+const debug_option                 =      [nothing ; "ETA" ; "R_ATOMS"][2] 
+#If "ETA", it computes the efficiency for an illustrative metalens and quits
+#If "R_ATOMS", it saves the atomic positions for an illustrative metalens and quits
 
 ################## FIXED PARAMETERS ####################################################################################################################################
 #
@@ -38,20 +38,22 @@ const field_polarization   = [1.0 ; 0.0 ; 0.0]
 #
 const w0                =    4.0
 const focal_point       =    20.0
-const r_lens            =    7.0
+const r_lens            =    8.0
 const gamma_prime       =    5.75
 const laser_detuning    =    0.0
 #
-println("")
-println("#"^25)
-println("")
-println("The initial settings are: ")
-println("w0 = ",w0)
-println("gamma_prime = ", gamma_prime)
-println("r_lens = ", r_lens)
-println("focal_point = ", focal_point)
-println("")
-println("#"^25)
+if debug_option == nothing
+    println("")
+    println("#"^25)
+    println("")
+    println("The initial settings are: ")
+    println("w0 = ",w0)
+    println("gamma_prime = ", gamma_prime)
+    println("r_lens = ", r_lens)
+    println("focal_point = ", focal_point)
+    println("")
+    println("#"^25)
+end
 #
 
 
@@ -87,7 +89,7 @@ const max_stuck_sequence = [intInf ; 50][1]
 const thickness_range    = (0.1,0.8)
 const phase_range        = (-3.141592653589793,3.141592653589793)
 const buffer_range       = (0.,0.5)
-const initial_guess      = [2.0/3, 1.0775,0.20048828125]
+const initial_guess      = [0.6750965215553976, 1.1319090308946498, 0.46835704963894703] #[2.0/3, 1.0775,0.20048828125]
 
 
 ################## FUNCTIONS #############################################################################################################
@@ -103,21 +105,13 @@ end
 const lower_range = (x->sort(collect(x))[1]).([thickness_range, phase_range, buffer_range])
 const upper_range = (x->sort(collect(x))[2]).([thickness_range, phase_range, buffer_range])
 #
-if debug_r_atoms_option
+if debug_option == "R_ATOMS"
     debug_r_atoms(r_lens , focal_point, initial_guess[1], 0.8, initial_guess[2])
 end
 #
-if debug_eta_option
-    r_lens_debug         = 10.
-    w0_debug             = w0
-    focal_point_debug    = focal_point
-    gamma_prime_debug    = gamma_prime
-    laser_detuning_debug = laser_detuning
-    parameters_debug     = [0.704199570451851, 1.3429376990624875, 0.26280032985692664]
-    #thickness, phase, buffer
-    eta_debug = SM_main(parameters_debug[1], parameters_debug[2], parameters_debug[3], w0_debug, focal_point_debug, r_lens_debug,gamma_prime_debug,laser_detuning_debug)
-    println(" **** The debug efficiency reads: eta = ", eta_debug,"  ****  ")
-    error("DEBUG EFFICIENCY COMPUTED. CORRECT EXIT.")
+if debug_option == "ETA"
+    parameters_debug     = [0.6750965215553976, 1.1319090308946498, 0.46835704963894703] #[0.704199570451851, 1.3429376990624875, 0.26280032985692664]
+    debug_eta(10.0,w0 ,focal_point, gamma_prime , laser_detuning,parameters_debug)
 end
 #
 #Definition of the solver
@@ -141,7 +135,7 @@ if use_blackboxoptim_option
 else
     using Optim
     chosen_solver = (
-        ParticleSwarm(lower_range, upper_range, 60),          
+        ParticleSwarm(lower_range, upper_range, 70),          
         SAMIN(; rt=0.9),
         SimulatedAnnealing(),
         NelderMead()
@@ -171,11 +165,6 @@ function objective_func(x)
     #thickness, phase, buffer
     return 1.0-SM_main(x[1], x[2], x[3], w0, focal_point, r_lens,gamma_prime,laser_detuning)
 end
-#
-#
-println("RESTULT EFFICIENCY: ", SM_main(0.7158781953582799, 1.3408041848153305, 0.23970347594588154, w0, focal_point, 10.0,gamma_prime,laser_detuning))
-error("OKOK")
-#
 #
 #Initializing the optimization
 if initial_guess_option
