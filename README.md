@@ -68,6 +68,6 @@ If set to `R_ATOMS` or `ETA`, then the code does not perform any optimization. O
 # References 
 
 <a id="Andreoli2023b">[1]</a> 
-Andreoli F, High AA, Chang DE, 
-*Metalens formed by structured, sub-wavelength atomic arrays*, 
-paper in preparation (2023)
+Andreoli F, Mann CR, High AA, Chang DE, 
+*Metalens formed by structured arrays of atomic emitters*, 
+paper in preparation (2024)
