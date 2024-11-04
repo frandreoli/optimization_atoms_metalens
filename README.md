@@ -70,4 +70,4 @@ If set to `R_ATOMS` or `ETA`, then the code does not perform any optimization. O
 <a id="Andreoli2023b">[1]</a> 
 Andreoli F, Mann CR, High AA, Chang DE, 
 *Metalens formed by structured arrays of atomic emitters*, 
-paper in preparation (2024)
+[arXiv:2410.22469](https://arxiv.org/abs/2410.22469) (2024)
